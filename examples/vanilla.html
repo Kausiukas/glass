@@ -1,0 +1,108 @@
+<!doctype html>
+<!--
+  Framework-free example. Opens by double-click, and also works from any web server.
+
+  Background: put your video next to this file as beach.mp4 (e.g. a copy of /marketing/beach-multiscene.mp4).
+  Browsers do not let WebGL read a video opened from disk (file://), so from disk this page refracts a painted
+  stand-in instead. Serve the package folder (npx serve .  or  python -m http.server) to see your video in the glass.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glass slab · vanilla example</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&family=Open+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="../src/glass/glass.css">
+<style>
+  [hidden] { display: none !important; }
+  body { margin: 0; font-family: "Open Sans", system-ui, sans-serif; color: #07111e; background: #d9c6ae; }
+  .bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+  main { position: relative; z-index: 2; min-height: 100svh; display: grid; place-items: center; padding: 96px 16px; }
+  .glass-slab { max-width: 920px; padding: 64px 56px; }
+  .eyebrow { margin: 0 0 16px; font-size: 14px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
+  h1 { margin: 0; font: 800 clamp(38px, 6vw, 68px)/1.04 Poppins, system-ui, sans-serif; letter-spacing: -.01em; }
+  .copy { margin: 24px 0 0; max-width: 56ch; font-size: 18px; line-height: 1.6; }
+  .cta { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 16px; }
+  .cta a { padding: 16px 28px; border-radius: 16px; font: 700 16px Poppins, system-ui, sans-serif; text-decoration: none; color: #fff; background: #2257ff; }
+  .cta a + a { background: rgba(255,255,255,.6); color: #07111e; }
+  .note { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 3; max-width: 640px; margin: 0 auto; padding: 12px 16px;
+          border-radius: 12px; background: rgba(7,17,30,.86); color: #fff; font: 14px/1.5 system-ui, sans-serif; }
+  .note code { color: #9fd8d0; }
+  @media (max-width: 600px) { .glass-slab { padding: 40px 28px; } }
+</style>
+</head>
+<body>
+<video class="bg" id="bg" src="beach.mp4" autoplay muted loop playsinline preload="auto"></video>
+<canvas class="bg" id="standIn" hidden></canvas>
+<main>
+  <canvas class="glass-canvas" id="gl" aria-hidden="true"></canvas>
+  <div class="glass-host" id="host">
+    <div class="glass-slab" id="slab">
+      <p class="eyebrow" data-glass-carve data-glass-small>Effortless Marketing · Pure Peace of Mind</p>
+      <h1 data-glass-carve>Sit Back. Let the Waves Carry Your Marketing.</h1>
+      <p class="copy">Campaign scheduling, autonomous SEO growth and creative video synthesis, running quietly in the background.</p>
+      <div class="cta">
+        <a href="#start" data-glass-button="1"><span data-glass-label>Start your journey free →</span></a>
+        <a href="#login" data-glass-button="2"><span data-glass-label>Sign in</span></a>
+      </div>
+    </div>
+  </div>
+</main>
+<p class="note" id="note" hidden></p>
+
+<!-- Classic-script build: global GlassSlabLib. With a bundler, import { GlassSlab } from the ESM build or src/ instead. -->
+<script src="../dist/glass-slab.iife.js"></script>
+<script>
+  const fromDisk = location.protocol === "file:";
+  const video = document.getElementById("bg");
+  const note = document.getElementById("note");
+  let usingStandIn = false;
+
+  const engine = new GlassSlabLib.GlassSlab({
+    canvas: document.getElementById("gl"),
+    host: document.getElementById("host"),
+    slab: document.getElementById("slab"),
+    mode: "overlay",
+    background: video,
+    // Workers cannot start from file://; without one the carving is built on the main thread (a short pause on load).
+    createWorker: fromDisk ? undefined : () => new Worker("../dist/relief.worker.js"),
+    options: { thickness: 44, tool: "gouge" },
+    onError: msg => {
+      if (/cross-origin|texture/i.test(msg)) useStandIn(fromDisk
+        ? "Browsers do not let WebGL read a video opened from disk, so the glass shows a painted stand-in. Serve the folder over http (<code>npx serve .</code>) to see the video refracted."
+        : "The video comes from another domain without CORS, so WebGL cannot read it. Add <code>crossorigin=\"anonymous\"</code> and CORS headers on that server.");
+      else console.warn("[glass]", msg);
+    },
+  });
+  engine.start();
+  window.glass = engine; // try glass.setOptions({ fill: "gold" }) in the console
+
+  // No video (missing file or blocked): paint a sand-and-sea stand-in so the glass has something to refract.
+  function useStandIn(message) {
+    if (usingStandIn) return;
+    usingStandIn = true;
+    const c = document.getElementById("standIn");
+    c.width = 1600; c.height = 1000;
+    const g = c.getContext("2d");
+    g.fillStyle = "#dcc9b0"; g.fillRect(0, 0, 1600, 1000);                      // sand
+    const shore = y => 640 + 90 * Math.sin(y / 170) + 40 * Math.sin(y / 61);      // wavy waterline
+    const sea = g.createLinearGradient(600, 0, 1600, 0);
+    sea.addColorStop(0, "#a8ddd4"); sea.addColorStop(0.35, "#3f9fb0"); sea.addColorStop(1, "#124f68");
+    g.beginPath(); g.moveTo(1600, 0);
+    for (let y = 0; y <= 1000; y += 10) g.lineTo(shore(y), y);
+    g.lineTo(1600, 1000); g.closePath(); g.fillStyle = sea; g.fill();
+    for (let k = 0; k < 4; k++) {                                                  // foam lines
+      g.beginPath(); g.lineWidth = 5 - k; g.strokeStyle = `rgba(255,255,255,${0.6 - k * 0.13})`;
+      for (let y = 0; y <= 1000; y += 10) g.lineTo(shore(y) + 24 + k * 80 + 10 * Math.sin(y / 45 + k), y);
+      g.stroke();
+    }
+    video.pause(); video.hidden = true; c.hidden = false;
+    engine.setBackground(c, "element");
+    note.innerHTML = message; note.hidden = false;
+  }
+  const noVideo = () => useStandIn("No <code>beach.mp4</code> next to this page, so the glass shows a painted stand-in. Copy your background video here as <code>beach.mp4</code>.");
+  video.addEventListener("error", noVideo);
+  if (video.error || video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) noVideo(); // failed before this script ran
+</script>
+</body>
+</html>

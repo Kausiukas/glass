@@ -1,0 +1,386 @@
+<!doctype html>
+<!-- Template for ../carved-glass-lab.html. build.mjs inlines glass.css and the bundled lab.ts. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Carved Glass Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Open+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: the hero is one ray-traced glass slab (engine: src/glass) floating over a live beach; a control dock sticks to the bottom on wide screens;
+   below it, a cross-section that explains the volume and the current flat style for comparison.
+   Deliberately single-theme: it reproduces the site's own light glass-over-sand world, so every colour is set explicitly. */
+:root{
+  color-scheme:light;
+  --sand:#d9c6ae;
+  --ink:#07111e;
+  --ink-2:#1e293b;
+  --ink-3:#4b5b6e;
+  --brand:#2257ff;
+  --brand-2:#5b3cff;
+  --sea:#0e7490;
+  --glass-edge:#2f8f7f;
+  --panel:rgba(255,255,255,.62);
+  --panel-line:rgba(255,255,255,.85);
+  --warn:#9a3412;
+  --f-display:"Poppins","Segoe UI",system-ui,sans-serif;
+  --f-body:"Open Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important} /* panels and the modal set display, so hidden needs !important */
+img{max-width:100%}
+html,body{min-height:100%}
+body{margin:0}
+body{background:var(--sand);color:var(--ink-2);font:15px/1.6 var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:rgba(255,255,255,.7)}
+
+/* a loaded video/image stays decodable but invisible; the engine draws it */
+.bg-media{position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none}
+html.no-gl body{background:linear-gradient(100deg,#e2d2bd 0 38%,#cfe9e4 41%,#4fa9b3 60%,#16566f 100%) fixed}
+.page{position:relative;z-index:2}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:rgba(255,255,255,.6);
+  -webkit-backdrop-filter:blur(26px) saturate(1.2);backdrop-filter:blur(26px) saturate(1.2);
+  border-bottom:1px solid rgba(255,255,255,.75);box-shadow:0 4px 30px rgba(14,43,73,.08)}
+.top-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;padding-block:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.brand b{display:block;font:700 16px/1.2 var(--f-display);color:var(--ink)}
+.brand span{display:block;font:500 11.5px/1.3 var(--f-mono);color:var(--ink-3)}
+.chip{font:500 11.5px/1 var(--f-mono);color:var(--ink);padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.75);border:1px solid #fff;white-space:nowrap}
+@media (max-width:600px){ .top{position:relative;top:0} .brand span{display:none} }
+
+
+/* hero slab */
+.hero{padding-block:clamp(40px,7vw,90px) clamp(36px,6vw,80px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.slab-host{max-width:980px;margin:0 auto}
+.slab-body{display:grid;justify-items:center;gap:20px;text-align:center;padding:clamp(28px,5.5vw,64px) clamp(20px,5vw,64px)}
+.slab-eyebrow{margin:0;font:700 clamp(.86rem,.76rem + .4vw,1.1rem)/1.3 var(--f-display);letter-spacing:.2em;text-transform:uppercase}
+.slab-h1{margin:0;max-width:13.5em;font:800 clamp(2.1rem,1.1rem + 4vw,4rem)/1.1 var(--f-display);letter-spacing:.005em;text-wrap:balance}
+.slab-copy{margin:0;max-width:40em;font:600 clamp(.98rem,.92rem + .3vw,1.12rem)/1.6 var(--f-body);color:#0d2230;text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.slab-cta{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.cta,.cta-ghost{font:700 16px/1 var(--f-body);border-radius:16px;padding:17px 26px;cursor:pointer;border:0}
+.cta{color:#fff;background:linear-gradient(90deg,var(--brand),var(--brand-2));box-shadow:0 10px 26px -8px rgba(34,87,255,.6),inset 0 1px 0 rgba(255,255,255,.35)}
+.cta-ghost{color:var(--ink);background:rgba(255,255,255,.5);box-shadow:inset 0 1.5px 0 #fff,inset 0 0 0 1px rgba(255,255,255,.7),0 6px 16px -8px rgba(10,30,60,.3)}
+.cta:focus-visible,.cta-ghost:focus-visible{outline:2px solid #fff;outline-offset:3px}
+
+/* dock */
+.dock-wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));z-index:40}
+@media (min-width:900px){ .dock-wrap{position:sticky;bottom:calc(14px + env(safe-area-inset-bottom,0px))} }
+.dock{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px 18px;align-items:center;padding:12px 16px;border-radius:20px;
+  background:var(--panel);-webkit-backdrop-filter:blur(24px) saturate(1.25);backdrop-filter:blur(24px) saturate(1.25);
+  border:1px solid var(--panel-line);box-shadow:inset 0 1.5px 0 #fff,0 14px 40px -10px rgba(10,30,60,.35)}
+.tabs{display:flex;flex-direction:column;gap:4px;padding-right:14px;border-right:1px solid rgba(15,23,42,.1)}
+.tab{font:700 13px/1 var(--f-body);color:var(--ink-3);background:transparent;border:0;border-radius:9px;padding:8px 12px;cursor:pointer;text-align:left}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--ink);color:#fff}
+.tab:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.panel{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;min-width:0}
+.ctl{display:grid;gap:6px;min-width:0;border:0;margin:0;padding:0}
+.ctl>legend,.lab{padding:0;font:500 10.5px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.seg{display:inline-flex;padding:3px;border-radius:12px;background:rgba(15,23,42,.07);box-shadow:inset 0 1px 2px rgba(15,23,42,.08)}
+.seg label{position:relative;cursor:pointer}
+.seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.seg span{display:block;padding:6px 10px;border-radius:9px;font:600 13px/1.2 var(--f-body);color:var(--ink-3);white-space:nowrap}
+.seg input:checked+span{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(15,23,42,.18)}
+.seg input:focus-visible+span,.range input:focus-visible,.btn:focus-visible,.field input:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.range{display:flex;align-items:center;gap:8px}
+.range input{width:108px;accent-color:var(--brand)}
+.range output{font:500 12.5px/1 var(--f-mono);color:var(--ink);min-width:52px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.status{display:grid;gap:4px;justify-items:end}
+.status .chip{background:rgba(255,255,255,.85)}
+.status .chip.err{color:#fff;background:var(--warn);border-color:var(--warn);white-space:normal;max-width:320px;line-height:1.35}
+@media (max-width:899px){
+  .dock{grid-template-columns:minmax(0,1fr)}
+  .tabs{flex-direction:row;flex-wrap:wrap;padding-right:0;border-right:0;padding-bottom:10px;border-bottom:1px solid rgba(15,23,42,.1)}
+  .status{justify-items:start}
+}
+
+/* lower content */
+.col{max-width:1180px;margin:0 auto;display:grid;gap:24px;padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.card{position:relative;border-radius:22px;padding:clamp(18px,3.2vw,34px);
+  background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(240,249,255,.38));
+  -webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);
+  box-shadow:inset 0 1.5px 0 #fff,inset 0 0 0 1px rgba(255,255,255,.55),0 12px 32px rgba(10,30,60,.12)}
+.card h2{margin:0;font:800 clamp(1.25rem,1.05rem + .8vw,1.6rem)/1.2 var(--f-display);color:var(--ink);letter-spacing:-.01em;text-wrap:balance}
+.card p{margin:0;max-width:70ch}
+.eyebrow{font:500 11.5px/1.3 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--sea)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){ .grid2{grid-template-columns:minmax(0,1fr)} }
+.stack{display:grid;gap:12px}
+.scene{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end;margin-top:6px}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.btn{position:relative;display:inline-flex;align-items:center;padding:7px 12px;border-radius:10px;cursor:pointer;
+  font:600 13px/1.2 var(--f-body);color:var(--ink);background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(241,245,249,.7));
+  border:1px solid #fff;border-bottom-color:rgba(15,23,42,.14);box-shadow:0 2px 8px rgba(10,30,60,.08)}
+.btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.field input{width:min(420px,100%);font:600 14px/1.2 var(--f-body);color:var(--ink);padding:8px 11px;border-radius:10px;border:1px solid rgba(15,23,42,.16);background:rgba(255,255,255,.9)}
+.ctl.wide{flex:1 1 280px}
+.ctl.wide .field input{width:100%}
+.facts{margin:4px 0 0;padding:0;list-style:none;display:grid;gap:8px}
+.facts li{display:grid;grid-template-columns:118px minmax(0,1fr);gap:12px;font-size:14.5px}
+.facts b{font:500 11px/1.9 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--sea)}
+.xsec{width:100%;height:auto;display:block}
+.xsec-wrap{overflow-x:auto}
+.before{display:grid;gap:10px;text-align:center;padding-block:10px}
+.before .h{margin:0 auto;max-width:14em;font:800 clamp(1.6rem,1rem + 2.4vw,2.6rem)/1.15 var(--f-display);letter-spacing:-.025em;color:#07111e;
+  -webkit-text-stroke:1px #fff;text-shadow:0 1px 0 rgba(255,255,255,.98),0 -1px .5px rgba(0,0,0,.32);text-wrap:balance}
+.foot{margin:0;text-align:center;font:500 12px/1.5 var(--f-mono);color:var(--ink-2);text-shadow:0 1px 0 rgba(255,255,255,.8)}
+
+/* still-image modal */
+.modal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:rgba(7,17,30,.45);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.modal-card{max-width:min(980px,100%);max-height:90vh;overflow:auto;display:grid;gap:12px;padding:16px;border-radius:18px;background:#f5f8fa;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font:700 15px/1.2 var(--f-display);color:var(--ink)}
+.modal-card img{width:100%;height:auto;border-radius:10px;background:repeating-conic-gradient(#e2e8f0 0 25%,#fff 0 50%) 0 0/16px 16px}
+.modal-note{margin:0;font-size:13.5px;color:var(--ink-2)}
+.modal-note a{color:var(--brand);font-weight:700}
+
+</style>
+<link rel="stylesheet" href="../src/glass/glass.css" data-build-inline>
+</head>
+<body>
+<!--template-notice--><div style="position:fixed;inset:auto 16px 16px;z-index:999;padding:14px 18px;border-radius:12px;background:#07111e;color:#fff;font:600 14px/1.5 system-ui,sans-serif">This is the build template of the lab, without its script. Open <b>carved-glass-lab.html</b> in the package root instead (run <code>npm run build</code> after editing this file).</div><!--/template-notice-->
+<canvas id="gl" class="glass-canvas" aria-hidden="true"></canvas>
+
+<div class="page">
+  <header class="top">
+    <div class="top-in">
+      <div class="brand">
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="1" y="1" width="28" height="28" rx="8" fill="#07111e"/><rect x="7" y="8" width="16" height="14" rx="3" fill="none" stroke="#7fd6c8" stroke-width="2"/><path d="M10 12h10M10 16h7" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".7"/></svg>
+        <div><b>Carved Glass Lab</b><span>Ekopolimeras Marketing · v4, production engine</span></div>
+      </div>
+      <span class="chip" id="engine">Starting…</span>
+    </div>
+  </header>
+
+  <section class="hero" aria-label="Glass slab demo">
+    <div class="glass-host slab-host" id="slabHost"><div class="glass-slab slab" id="slab">
+      <div class="slab-body">
+        <p class="slab-eyebrow" data-glass-carve data-glass-small>Effortless Marketing · Pure Peace of Mind</p>
+        <h1 class="slab-h1" data-glass-carve id="slabH1">Sit Back. Let the Waves Carry Your Marketing.</h1>
+        <p class="slab-copy">Campaign scheduling, autonomous SEO growth and creative video synthesis, running quietly in the background while you enjoy the breeze.</p>
+        <div class="slab-cta"><button type="button" class="cta" data-glass-button="1"><span data-glass-label>Start your journey free →</span></button><button type="button" class="cta-ghost" data-glass-button="2"><span data-glass-label>Sign in</span></button></div>
+      </div>
+    </div></div>
+  </section>
+
+  <div class="dock-wrap">
+    <form class="dock" id="dock" aria-label="Glass controls" onsubmit="return false">
+      <div class="tabs" role="tablist" aria-label="Control groups">
+        <button type="button" class="tab" role="tab" id="tab-letters" aria-controls="panel-letters" aria-selected="true">Letters</button>
+        <button type="button" class="tab" role="tab" id="tab-buttons" aria-controls="panel-buttons" aria-selected="false">Buttons</button>
+        <button type="button" class="tab" role="tab" id="tab-glass" aria-controls="panel-glass" aria-selected="false">Glass</button>
+        <button type="button" class="tab" role="tab" id="tab-light" aria-controls="panel-light" aria-selected="false">Light</button>
+      </div>
+
+      <div class="panel" id="panel-letters" role="tabpanel" aria-labelledby="tab-letters">
+        <div class="ctl">
+          <span class="lab" id="styleLab">Style</span>
+          <div class="btns" role="group" aria-labelledby="styleLab">
+            <button type="button" class="btn" data-lstyle="hand">Hand chisel</button>
+            <button type="button" class="btn" data-lstyle="crystal">Crystal V-cut</button>
+            <button type="button" class="btn" data-lstyle="laser">Laser</button>
+          </div>
+        </div>
+        <fieldset class="ctl"><legend>Tool</legend><div class="seg">
+          <label><input type="radio" name="tool" id="tool-gouge" value="gouge"><span>Gouge</span></label>
+          <label><input type="radio" name="tool" id="tool-vee" value="vee"><span>V-chisel</span></label>
+          <label><input type="radio" name="tool" id="tool-sand" value="sand"><span>Sandblast</span></label>
+        </div></fieldset>
+        <div class="ctl"><label class="lab" for="wallAngle">Wall angle</label>
+          <div class="range"><input type="range" id="wallAngle" data-opt data-fmt="deg" min="15" max="80" step="1"><output for="wallAngle"></output></div></div>
+        <div class="ctl"><label class="lab" for="maxDepth">Max depth</label>
+          <div class="range"><input type="range" id="maxDepth" data-opt data-fmt="px" min="2" max="28" step="1"><output for="maxDepth"></output></div></div>
+        <div class="ctl"><label class="lab" for="chips">Chipped edges</label>
+          <div class="range"><input type="range" id="chips" data-opt data-k=".01" data-fmt="pct" min="0" max="100" step="1"><output for="chips"></output></div></div>
+        <div class="ctl"><label class="lab" for="wobble">Hand wobble</label>
+          <div class="range"><input type="range" id="wobble" data-opt data-k=".01" data-fmt="pct" min="0" max="100" step="1"><output for="wobble"></output></div></div>
+        <div class="ctl"><label class="lab" for="finish">Cut finish</label>
+          <div class="range"><input type="range" id="finish" data-opt data-k=".01" data-fmt="matte" min="0" max="100" step="1"><output for="finish"></output></div></div>
+        <fieldset class="ctl"><legend>Fill</legend><div class="seg">
+          <label><input type="radio" name="fill" id="fill-none" value="none"><span>None</span></label>
+          <label><input type="radio" name="fill" id="fill-gold" value="gold"><span>Gold leaf</span></label>
+          <label><input type="radio" name="fill" id="fill-white" value="white"><span>White enamel</span></label>
+        </div></fieldset>
+        <fieldset class="ctl"><legend>Top line</legend><div class="seg">
+          <label><input type="radio" name="smallLine" id="smallLine-print" value="print"><span>Frosted</span></label>
+          <label><input type="radio" name="smallLine" id="smallLine-cut" value="cut"><span>Chiselled</span></label>
+        </div></fieldset>
+      </div>
+
+      <div class="panel" id="panel-buttons" role="tabpanel" aria-labelledby="tab-buttons" hidden>
+        <div class="ctl"><label class="lab" for="buttonHeight">Height</label>
+          <div class="range"><input type="range" id="buttonHeight" data-opt data-fmt="px" min="0" max="28" step="1"><output for="buttonHeight"></output></div></div>
+        <fieldset class="ctl"><legend>Shape</legend><div class="seg">
+          <label><input type="radio" name="buttonShape" id="buttonShape-pillow" value="pillow"><span>Pillow</span></label>
+          <label><input type="radio" name="buttonShape" id="buttonShape-dome" value="dome"><span>Dome</span></label>
+          <label><input type="radio" name="buttonShape" id="buttonShape-bevel" value="bevel"><span>Bevel</span></label>
+        </div></fieldset>
+        <div class="ctl"><label class="lab" for="buttonEdge">Edge width</label>
+          <div class="range"><input type="range" id="buttonEdge" data-opt data-fmt="px" min="3" max="30" step="1"><output for="buttonEdge"></output></div></div>
+        <fieldset class="ctl"><legend>Main button</legend><div class="seg">
+          <label><input type="radio" name="mainColor" id="mainColor-brand" value="brand"><span>Brand blue</span></label>
+          <label><input type="radio" name="mainColor" id="mainColor-cobalt" value="cobalt"><span>Cobalt</span></label>
+          <label><input type="radio" name="mainColor" id="mainColor-clear" value="clear"><span>Clear</span></label>
+        </div></fieldset>
+        <fieldset class="ctl"><legend>Second button</legend><div class="seg">
+          <label><input type="radio" name="secondary" id="secondary-clear" value="clear"><span>Clear</span></label>
+          <label><input type="radio" name="secondary" id="secondary-frost" value="frost"><span>Frosted</span></label>
+        </div></fieldset>
+      </div>
+
+      <div class="panel" id="panel-glass" role="tabpanel" aria-labelledby="tab-glass" hidden>
+        <fieldset class="ctl"><legend>View</legend><div class="seg">
+          <label><input type="radio" name="view" id="view-pointer" value="pointer"><span>Follow pointer</span></label>
+          <label><input type="radio" name="view" id="view-sway" value="sway"><span>Sway</span></label>
+          <label><input type="radio" name="view" id="view-still" value="still"><span>Still</span></label>
+        </div></fieldset>
+        <div class="ctl"><label class="lab" for="thickness">Thickness</label>
+          <div class="range"><input type="range" id="thickness" data-opt data-fmt="px" min="6" max="110" step="1"><output for="thickness"></output></div></div>
+        <div class="ctl"><label class="lab" for="frost">Surface</label>
+          <div class="range"><input type="range" id="frost" data-opt data-k=".01" data-fmt="frost" min="0" max="100" step="1"><output for="frost"></output></div></div>
+        <div class="ctl"><label class="lab" for="edgeRadius">Edge rounding</label>
+          <div class="range"><input type="range" id="edgeRadius" data-opt data-fmt="px" min="0" max="24" step="1"><output for="edgeRadius"></output></div></div>
+        <fieldset class="ctl"><legend>Glass</legend><div class="seg">
+          <label><input type="radio" name="glass" id="glass-float" value="float"><span>Float</span></label>
+          <label><input type="radio" name="glass" id="glass-clear" value="clear"><span>Low-iron</span></label>
+          <label><input type="radio" name="glass" id="glass-sea" value="sea"><span>Sea</span></label>
+        </div></fieldset>
+        <fieldset class="ctl"><legend>Resolution</legend><div class="seg">
+          <label><input type="radio" name="quality" id="quality-auto" value="auto"><span>Auto</span></label>
+          <label><input type="radio" name="quality" id="quality-full" value="full"><span>Full</span></label>
+        </div></fieldset>
+        <div class="ctl" id="tiltCtl" hidden>
+          <span class="lab">Phone</span>
+          <div class="btns"><button type="button" class="btn" id="deviceTilt">Tilt with phone</button></div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-light" role="tabpanel" aria-labelledby="tab-light" hidden>
+        <fieldset class="ctl"><legend>Reflections</legend><div class="seg">
+          <label><input type="radio" name="reflections" id="reflections-sky" value="sky"><span>Sky + scene</span></label>
+          <label><input type="radio" name="reflections" id="reflections-studio" value="studio"><span>Studio</span></label>
+        </div></fieldset>
+        <div class="ctl"><label class="lab" for="sunAzimuth">Sun direction</label>
+          <div class="range"><input type="range" id="sunAzimuth" data-opt data-fmt="deg" min="0" max="359" step="1"><output for="sunAzimuth"></output></div></div>
+        <div class="ctl"><label class="lab" for="sunElevation">Sun height</label>
+          <div class="range"><input type="range" id="sunElevation" data-opt data-fmt="deg" min="10" max="80" step="1"><output for="sunElevation"></output></div></div>
+        <div class="ctl"><label class="lab" for="dispersion">Rainbow fringes</label>
+          <div class="range"><input type="range" id="dispersion" data-opt data-k=".01" data-fmt="pct" min="0" max="100" step="1"><output for="dispersion"></output></div></div>
+        <div class="ctl"><label class="lab" for="caustics">Caustics</label>
+          <div class="range"><input type="range" id="caustics" data-opt data-k=".01" data-fmt="pct" min="0" max="100" step="1"><output for="caustics"></output></div></div>
+        <div class="ctl"><label class="lab" for="bubbles">Air bubbles</label>
+          <div class="range"><input type="range" id="bubbles" data-opt data-k=".01" data-fmt="pct" min="0" max="100" step="1"><output for="bubbles"></output></div></div>
+      </div>
+
+      <div class="status" aria-live="polite">
+        <span class="chip" id="readout">—</span>
+        <span class="chip err" id="err" hidden></span>
+      </div>
+    </form>
+  </div>
+
+  <main class="col">
+    <section class="card stack">
+      <div class="eyebrow">Scene</div>
+      <div class="scene">
+        <div class="ctl">
+          <span class="lab" id="presetLab">Slab presets</span>
+          <div class="btns" role="group" aria-labelledby="presetLab">
+            <button type="button" class="btn" data-preset="pane">Frosted pane</button>
+            <button type="button" class="btn" data-preset="plate">Plate</button>
+            <button type="button" class="btn" data-preset="block">Crystal block</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <span class="lab" id="bgLab">Background</span>
+          <div class="btns" role="group" aria-labelledby="bgLab">
+            <button type="button" class="btn on" id="bgBeach">Beach</button>
+            <label class="btn" id="bgFileBtn">Your file…<input type="file" id="bgFile" accept="image/*,video/*" aria-label="Use your own image or video as background"></label>
+            <button type="button" class="btn" id="bgPause" aria-pressed="false">Pause</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <span class="lab">Poster</span>
+          <div class="btns"><button type="button" class="btn" id="still">Still image</button></div>
+        </div>
+        <div class="ctl wide">
+          <label class="lab" for="headline">Headline</label>
+          <div class="field"><input type="text" id="headline" maxlength="80" value="Sit Back. Let the Waves Carry Your Marketing." autocomplete="off"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card grid2">
+      <div class="stack">
+        <div class="eyebrow">What you are looking at</div>
+        <h2>A slab with two faces and glass in between</h2>
+        <p>Each pixel follows a ray through the slab: into the front face, a letter wall or a button, across the body of the glass, out of the back face, then onto the beach behind. Nothing here is a drop shadow or a layered copy.</p>
+        <ul class="facts">
+          <li><b>Front face</b><span>Reflects the sky, the clouds and the sun, and at grazing angles the beach itself. The reflection grows toward the edges, as on real glass.</span></li>
+          <li><b>Letters</b><span>Cut by a gouge (rounded floor) or a V-chisel (sharp crease), at the wall angle you set. The rim is chipped and slightly uneven, and the walls keep faint tool marks. The finish runs from polished to matte grey, with an optional gold-leaf or white-enamel fill.</span></li>
+          <li><b>Buttons</b><span>Raised glass on the same slab. The main one is tinted glass, darkest where it is thickest. Both rise on hover and press down when clicked.</span></li>
+          <li><b>Body</b><span>The beach shifts and bends with the thickness, and colours split slightly at bevels and cuts. Light that travels farther through the glass picks up its tint. Tiny air bubbles sit at different depths.</span></li>
+          <li><b>Back face</b><span>Reflects a faint, offset copy of the letters back up through the glass.</span></li>
+          <li><b>Shadow</b><span>Glass bends sunlight into bright lines (caustics). The edges, the cuts and the domed buttons throw them onto the beach, and the blue button throws blue light.</span></li>
+        </ul>
+      </div>
+      <div class="xsec-wrap">
+        <svg class="xsec" viewBox="0 0 520 300" role="img" aria-label="Cross-section of the slab showing a ray entering the front face, crossing the glass body, reflecting off the back face and leaving toward the background">
+          <defs><linearGradient id="gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9f1ec"/><stop offset="1" stop-color="#9fd3c7"/></linearGradient></defs>
+          <rect x="0" y="252" width="520" height="48" fill="#e5d3bd"/>
+          <rect x="290" y="252" width="230" height="48" fill="#7cc4c4"/>
+          <path d="M150 252 q24 -10 48 0" fill="none" stroke="#fff" stroke-width="3" opacity=".9"/>
+          <text x="12" y="282" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1e293b">background (beach)</text>
+          <text x="150" y="246" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1e293b">caustic</text>
+          <path d="M40 104 h96 c0 30 30 30 30 0 h46 l14 26 l14 -26 h66 c0 -22 60 -22 60 0 h114 a14 14 0 0 1 14 14 v56 a14 14 0 0 1 -14 14 h-440 a14 14 0 0 1 -14 -14 v-56 a14 14 0 0 1 14 -14 z" fill="url(#gb)" stroke="#2f8f7f" stroke-width="1.5" opacity=".95"/>
+          <path d="M480 106 a14 14 0 0 1 12 12 v56 a14 14 0 0 1 -12 12" fill="none" stroke="#1f6f60" stroke-width="5" opacity=".55"/>
+          <circle cx="92" cy="150" r="2.5" fill="#fff" stroke="#2f8f7f"/><circle cx="410" cy="132" r="1.8" fill="#fff" stroke="#2f8f7f"/>
+          <text x="40" y="96" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1e293b">front</text>
+          <text x="40" y="208" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1e293b">back face</text>
+          <text x="124" y="96" font-family="IBM Plex Mono, monospace" font-size="11" fill="#0e7490">gouge</text>
+          <text x="196" y="96" font-family="IBM Plex Mono, monospace" font-size="11" fill="#0e7490">V-chisel</text>
+          <text x="356" y="80" font-family="IBM Plex Mono, monospace" font-size="11" fill="#2257ff">raised button</text>
+          <text x="400" y="226" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1f6f60">edge: green</text>
+          <text x="100" y="164" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1e293b">bubbles · thickness T</text>
+          <path d="M330 20 L300 104" stroke="#2257ff" stroke-width="2" fill="none"/>
+          <path d="M300 104 L282 188" stroke="#2257ff" stroke-width="2" fill="none"/>
+          <path d="M282 188 L250 252" stroke="#2257ff" stroke-width="2" fill="none"/>
+          <path d="M282 188 L262 112" stroke="#5b3cff" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/>
+          <circle cx="330" cy="20" r="5" fill="#2257ff"/>
+          <text x="340" y="24" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1e293b">your eye</text>
+          <text x="330" y="134" font-family="IBM Plex Mono, monospace" font-size="11" fill="#5b3cff">back face reflects</text>
+          <text x="330" y="148" font-family="IBM Plex Mono, monospace" font-size="11" fill="#5b3cff">the letters</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="card stack">
+      <div class="eyebrow">For comparison</div>
+      <div class="before"><p class="h">Sit Back. Let the Waves Carry Your Marketing.</p></div>
+      <p>The site today: dark ink with a 1px white stroke on a blurred card. It has no back face, no thickness and no cut, which is why it reads as a flat sticker.</p>
+    </section>
+
+    <p class="foot">The beach is generated in a shader as a stand-in for beach-multiscene.mp4. Use “Your file…” to load the real video and judge the glass against it.</p>
+  </main>
+</div>
+
+<div class="modal" id="stillModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="stillTitle">
+    <div class="modal-head"><b id="stillTitle">Still image</b><button type="button" class="btn" id="stillClose">Close</button></div>
+    <img id="stillImg" alt="Rendered still of the glass slab">
+    <p class="modal-note">Use it as the poster and no-WebGL fallback. <a id="stillDl" download="glass-slab.png" href="#">Download PNG</a> works in the standalone file; inside the Claude viewer, right-click the image to save it.</p>
+  </div>
+</div>
+<!--lab-script-->
+</body>
+</html>

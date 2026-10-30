@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+package-lock.json.bak
+
+# Logs and debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary and local test files
+*.tmp
+raw_*.png
+test_*.png
