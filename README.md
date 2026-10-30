@@ -10,7 +10,9 @@ A real-time, ray-traced carved-glass hero card built in **WebGL2** and plain **T
 
 Every pixel follows an optical ray through a physical glass block: entering the front face or letter bevel, traveling through the volumetric glass with absorption and chromatic dispersion, reflecting off surfaces, and refracting onto the background video or canvas beneath.
 
-![Glass Slab Ray-Traced Hero](assets/hero-banner.png)
+![Glass Slab Live Demo](assets/demo.gif)
+
+*Live interactive WebGL2 ray tracing with physical tilt, caustics, and real-time Snell's law refraction ([watch MP4](assets/demo.mp4)).*
 
 ---
 
@@ -76,7 +78,10 @@ const pngBlob = await engine.renderStill({ scale: 2, crop: "slab" });
 const url = URL.createObjectURL(pngBlob);
 ```
 
-![Glass Slab Still Render](assets/glass-slab-still.png)
+<p align="center">
+  <img src="assets/hero-banner.png" alt="Ray-Traced Glass Hero Banner" width="49%" />
+  <img src="assets/glass-slab-still.png" alt="Glass Slab Still Render" width="49%" />
+</p>
 
 ---
 
